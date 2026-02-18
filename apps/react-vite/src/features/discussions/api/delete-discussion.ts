@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { MutationConfig } from '@/lib/react-query';
 
-import { getDiscussionsQueryOptions } from './get-discussions';
 
 export const deleteDiscussion = ({
   discussionId,
@@ -27,7 +26,7 @@ export const useDeleteDiscussion = ({
   return useMutation({
     onSuccess: (...args) => {
       queryClient.invalidateQueries({
-        queryKey: getDiscussionsQueryOptions().queryKey,
+        queryKey: ['discussions'],
       });
       onSuccess?.(...args);
     },

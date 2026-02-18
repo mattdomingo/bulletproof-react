@@ -21,8 +21,14 @@ export const DiscussionsList = ({
 }: DiscussionsListProps) => {
   const [searchParams] = useSearchParams();
 
+  const page = +(searchParams.get('page') || 1);
+  const search = searchParams.get('search') || '';
+  const filter = searchParams.get('filter') || '';
+
   const discussionsQuery = useDiscussions({
-    page: +(searchParams.get('page') || 1),
+    page,
+    search: search || undefined,
+    filter: filter || undefined,
   });
   const queryClient = useQueryClient();
 

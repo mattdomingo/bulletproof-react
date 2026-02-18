@@ -28,8 +28,10 @@ export const discussionsHandlers = [
       const url = new URL(request.url);
 
       const page = Number(url.searchParams.get('page') || 1);
+      const search = url.searchParams.get('search') || '';
+      const filter = url.searchParams.get('filter') || '';
 
-      const total = db.discussion.count({
+      let allDiscussions = db.discussion.findMany({
         where: {
           teamId: {
             equals: user?.teamId,
@@ -37,31 +39,48 @@ export const discussionsHandlers = [
         },
       });
 
+      // Apply search filter on title and body
+      if (search) {
+        const lower = search.toLowerCase();
+        allDiscussions = allDiscussions.filter(
+          (d) =>
+            d.title.toLowerCase().includes(lower) ||
+            d.body.toLowerCase().includes(lower),
+        );
+      }
+
+      // Apply author filter
+      if (filter === 'my') {
+        allDiscussions = allDiscussions.filter(
+          (d) => d.authorId === user?.id,
+        );
+      }
+
+      // Apply sort for recent
+      if (filter === 'recent') {
+        allDiscussions = [...allDiscussions].sort(
+          (a, b) => b.createdAt - a.createdAt,
+        );
+      }
+
+      const total = allDiscussions.length;
       const totalPages = Math.ceil(total / 10);
 
-      const result = db.discussion
-        .findMany({
+      const paginated = allDiscussions.slice(10 * (page - 1), 10 * page);
+
+      const result = paginated.map(({ authorId, ...discussion }) => {
+        const author = db.user.findFirst({
           where: {
-            teamId: {
-              equals: user?.teamId,
+            id: {
+              equals: authorId,
             },
           },
-          take: 10,
-          skip: 10 * (page - 1),
-        })
-        .map(({ authorId, ...discussion }) => {
-          const author = db.user.findFirst({
-            where: {
-              id: {
-                equals: authorId,
-              },
-            },
-          });
-          return {
-            ...discussion,
-            author: author ? sanitizeUser(author) : {},
-          };
         });
+        return {
+          ...discussion,
+          author: author ? sanitizeUser(author) : {},
+        };
+      });
       return HttpResponse.json({
         data: result,
         meta: {

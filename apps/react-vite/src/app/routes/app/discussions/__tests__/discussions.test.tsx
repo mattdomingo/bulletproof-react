@@ -1,10 +1,13 @@
 import type { Mock } from 'vitest';
 
 import { createDiscussion } from '@/testing/data-generators';
+import { DiscussionsList } from '@/features/discussions/components/discussions-list';
 import {
   renderApp,
   screen,
   userEvent,
+  createUser as createPersistedUser,
+  createDiscussion as createPersistedDiscussion,
   waitFor,
   within,
 } from '@/testing/test-utils';
@@ -92,5 +95,123 @@ test(
         name: newDiscussion.title,
       }),
     ).not.toBeInTheDocument();
+  },
+);
+
+test(
+  'should filter discussions by search param via backend',
+  { timeout: 10000 },
+  async () => {
+    const fakeUser = await createPersistedUser();
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: fakeUser.id,
+      title: 'Alpha topic',
+    });
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: fakeUser.id,
+      title: 'Beta subject',
+    });
+
+    // The search param is passed to the backend via the API
+    await renderApp(<DiscussionsList />, {
+      user: fakeUser,
+      url: '/?search=Alpha',
+      path: '/',
+    });
+
+    // Backend returns only matching discussions
+    await waitFor(() => {
+      expect(screen.getByText('Alpha topic')).toBeInTheDocument();
+    });
+
+    // Non-matching discussion is excluded by the backend, not by client-side filtering
+    expect(screen.queryByText('Beta subject')).not.toBeInTheDocument();
+  },
+);
+
+test(
+  'should show all discussions when no search param',
+  { timeout: 10000 },
+  async () => {
+    const fakeUser = await createPersistedUser();
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: fakeUser.id,
+      title: 'First discussion',
+    });
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: fakeUser.id,
+      title: 'Second discussion',
+    });
+
+    await renderApp(<DiscussionsList />, {
+      user: fakeUser,
+      url: '/',
+      path: '/',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('First discussion')).toBeInTheDocument();
+      expect(screen.getByText('Second discussion')).toBeInTheDocument();
+    });
+  },
+);
+
+test(
+  'should filter to show only user discussions with my filter via backend',
+  { timeout: 10000 },
+  async () => {
+    const fakeUser = await createPersistedUser();
+    const otherUser = await createPersistedUser({ teamId: fakeUser.teamId });
+
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: fakeUser.id,
+      title: 'My own discussion',
+    });
+    await createPersistedDiscussion({
+      teamId: fakeUser.teamId,
+      authorId: otherUser.id,
+      title: 'Other user discussion',
+    });
+
+    // The filter=my param is sent to the backend
+    await renderApp(<DiscussionsList />, {
+      user: fakeUser,
+      url: '/?filter=my',
+      path: '/',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('My own discussion')).toBeInTheDocument();
+    });
+
+    // Backend excludes discussions by other authors
+    expect(
+      screen.queryByText('Other user discussion'),
+    ).not.toBeInTheDocument();
+  },
+);
+
+test(
+  'should render two-column layout on discussions page',
+  { timeout: 10000 },
+  async () => {
+    const fakeUser = await createPersistedUser();
+
+    await renderApp(<DiscussionsRoute />, {
+      user: fakeUser,
+      url: '/app/discussions',
+      path: '/app/discussions',
+    });
+
+    // Should render the summary sidebar with Total Discussions and Your Team
+    expect(
+      await screen.findByText('Total Discussions'),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Your Team')).toBeInTheDocument();
   },
 );

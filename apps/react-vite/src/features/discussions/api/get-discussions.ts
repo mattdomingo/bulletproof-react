@@ -4,39 +4,53 @@ import { api } from '@/lib/api-client';
 import { QueryConfig } from '@/lib/react-query';
 import { Discussion, Meta } from '@/types/api';
 
-export const getDiscussions = (
+export const getDiscussions = ({
   page = 1,
-): Promise<{
+  search,
+  filter,
+}: {
+  page?: number;
+  search?: string;
+  filter?: string;
+} = {}): Promise<{
   data: Discussion[];
   meta: Meta;
 }> => {
   return api.get(`/discussions`, {
     params: {
       page,
+      ...(search ? { search } : {}),
+      ...(filter && filter !== 'all' ? { filter } : {}),
     },
   });
 };
 
 export const getDiscussionsQueryOptions = ({
   page,
-}: { page?: number } = {}) => {
+  search,
+  filter,
+}: { page?: number; search?: string; filter?: string } = {}) => {
   return queryOptions({
-    queryKey: page ? ['discussions', { page }] : ['discussions'],
-    queryFn: () => getDiscussions(page),
+    queryKey: ['discussions', { page, search, filter }],
+    queryFn: () => getDiscussions({ page, search, filter }),
   });
 };
 
 type UseDiscussionsOptions = {
   page?: number;
+  search?: string;
+  filter?: string;
   queryConfig?: QueryConfig<typeof getDiscussionsQueryOptions>;
 };
 
 export const useDiscussions = ({
   queryConfig,
   page,
+  search,
+  filter,
 }: UseDiscussionsOptions) => {
   return useQuery({
-    ...getDiscussionsQueryOptions({ page }),
+    ...getDiscussionsQueryOptions({ page, search, filter }),
     ...queryConfig,
   });
 };

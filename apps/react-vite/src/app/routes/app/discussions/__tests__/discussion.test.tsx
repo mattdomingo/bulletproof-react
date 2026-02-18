@@ -20,7 +20,7 @@ const renderDiscussion = async () => {
     url: `/app/discussions/${fakeDiscussion.id}`,
   });
 
-  await screen.findByText(fakeDiscussion.title);
+  await screen.findByRole('heading', { name: fakeDiscussion.title });
 
   return {
     ...utils,

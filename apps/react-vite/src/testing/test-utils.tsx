@@ -56,23 +56,22 @@ const initializeUser = async (user: any) => {
 
 export const renderApp = async (
   ui: any,
-  { user, url = '/', path = '/', ...renderOptions }: Record<string, any> = {},
+  { user, url = '/', path = '/', routes, ...renderOptions }: Record<string, any> = {},
 ) => {
   // if you want to render the app unauthenticated then pass "null" as the user
   const initializedUser = await initializeUser(user);
 
-  const router = createMemoryRouter(
-    [
-      {
-        path: path,
-        element: ui,
-      },
-    ],
+  const routeConfig = routes || [
     {
-      initialEntries: url ? ['/', url] : ['/'],
-      initialIndex: url ? 1 : 0,
+      path: path,
+      element: ui,
     },
-  );
+  ];
+
+  const router = createMemoryRouter(routeConfig, {
+    initialEntries: url ? ['/', url] : ['/'],
+    initialIndex: url ? 1 : 0,
+  });
 
   const returnValue = {
     ...rtlRender(ui, {
